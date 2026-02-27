@@ -4,7 +4,7 @@ Starter kit for building an AI Agent that connects to:
 - Playwright MCP for browser automation.
 - A custom MCP server for internal tools and workspace file operations.
 
-## Quick start
+## Quick start (local)
 
 ```bash
 cp .env.example .env
@@ -15,8 +15,9 @@ docker compose up --build
 
 ## Endpoints
 
-- `GET /health` for basic liveness.
-- `POST /run` to execute a task.
+- `GET /` lightweight web UI (useful for cloud test).
+- `GET /health` liveness.
+- `POST /run` execute a task.
 
 Example run:
 
@@ -33,3 +34,35 @@ curl -X POST http://localhost:8000/run \
   -H "Content-Type: application/json" \
   -d '{"task":"احذف الملف secrets.txt", "approved": true}'
 ```
+
+---
+
+## Cloud deployment (3 services)
+
+To run this "on the cloud web", deploy **three separate services** in the same private network:
+
+1. `playwright` service from image `mcr.microsoft.com/playwright/mcp`
+2. `mytools` service from `./mcp_mytools`
+3. `agent` service from `./agent_app` (public HTTP)
+
+### Required env on `agent`
+
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL` (optional)
+- `RUN_TIMEOUT_SECONDS`
+- `CORS_ORIGINS` (set your frontend domain in production)
+- `PLAYWRIGHT_MCP_URL` (private URL to playwright, e.g. `http://playwright:8931/mcp`)
+- `MYTOOLS_MCP_URL` (private URL to mytools, e.g. `http://mytools:8000/mcp`)
+
+### Required env on `mytools`
+
+- `WORKSPACE_DIR=/workspace`
+- `MY_AI_TOOLS_BASE_URL` (optional internal API)
+- `MY_AI_TOOLS_TOKEN` (optional)
+
+### Deployment notes
+
+- Keep `playwright` and `mytools` **private/internal only**.
+- Expose only `agent` publicly.
+- Set `CORS_ORIGINS` to your exact frontend domain(s), not `*`, in production.
+- Mount a persistent volume for `/workspace` on `mytools` if you need saved files.

@@ -1,8 +1,6 @@
 import asyncio
 import os
 import re
-from typing import Optional
-
 from agents import Agent, ModelSettings, Runner
 from agents.mcp import MCPServerStreamableHttp
 
