@@ -1,0 +1,2 @@
+# tkinter ships with most Python installers.
+# No extra runtime dependency required for HTTP calls (urllib from stdlib).

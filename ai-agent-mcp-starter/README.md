@@ -37,6 +37,31 @@ curl -X POST http://localhost:8000/run \
 
 ---
 
+## Desktop app for laptop
+
+If you want a laptop desktop app (instead of browser-only), use the included Tkinter client:
+
+```bash
+cd ai-agent-mcp-starter
+python desktop_app/app.py
+```
+
+- Default backend URL: `http://127.0.0.1:8000/run`
+- You can point it to your cloud endpoint with:
+
+```bash
+AGENT_API_URL="https://your-agent-domain/run" python desktop_app/app.py
+```
+
+Optional executable build (Windows/macOS/Linux):
+
+```bash
+pip install pyinstaller
+pyinstaller --noconfirm --onefile --windowed desktop_app/app.py --name ai-agent-mcp-desktop
+```
+
+---
+
 ## Cloud deployment (3 services)
 
 To run this "on the cloud web", deploy **three separate services** in the same private network:
