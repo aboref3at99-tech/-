@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+# desktop packaging
+dist/
+build/
+*.spec
