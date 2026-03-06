@@ -3,7 +3,7 @@
 Starter kit for building an AI Agent that connects to:
 - Playwright MCP for browser automation.
 - A custom MCP server for internal tools and workspace file operations.
-- A lightweight video-workflow planning API (project, scenes, prompt packet).
+- A lightweight video-workflow planning API (project, scenes, prompt packet) with file-backed persistence for cloud runs.
 
 ## Quick start (local)
 
@@ -123,6 +123,7 @@ To run this "on the cloud web", deploy **three separate services** in the same p
 - `CORS_ORIGINS` (set your frontend domain in production)
 - `PLAYWRIGHT_MCP_URL` (private URL to playwright, e.g. `http://playwright:8931/mcp`)
 - `MYTOOLS_MCP_URL` (private URL to mytools, e.g. `http://mytools:8000/mcp`)
+- `VIDEO_PROJECTS_FILE` (optional): path for persisted video project metadata (default `/tmp/ai-agent-mcp/video-projects.json`).
 
 ### Required env on `mytools`
 
@@ -136,3 +137,4 @@ To run this "on the cloud web", deploy **three separate services** in the same p
 - Expose only `agent` publicly.
 - Set `CORS_ORIGINS` to your exact frontend domain(s), not `*`, in production.
 - Mount a persistent volume for `/workspace` on `mytools` if you need saved files.
+- For multi-instance deployment, move project storage to a shared DB (PostgreSQL/Redis) instead of local file persistence.

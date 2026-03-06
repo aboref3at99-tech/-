@@ -1,5 +1,4 @@
 import os
-from datetime import datetime, timezone
 from typing import Dict, List
 from uuid import uuid4
 
@@ -9,6 +8,13 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from agent_runner import run_task
+from video_workflow import (
+    VideoProjectStore,
+    build_outline,
+    build_production_checklist,
+    build_scene_plan,
+    build_scene_prompts,
+)
 
 app = FastAPI(title="AI Agent + MCP + Browser")
 
@@ -75,7 +81,9 @@ class PromptGenerationResponse(BaseModel):
     scene_prompts: List[ScenePrompt]
 
 
-VIDEO_PROJECTS: Dict[str, Dict] = {}
+video_store = VideoProjectStore(
+    os.environ.get("VIDEO_PROJECTS_FILE", "/tmp/ai-agent-mcp/video-projects.json")
+)
 
 
 @app.middleware("http")
@@ -146,23 +154,19 @@ async def run(req: RunRequest):
 
 @app.post("/video/projects")
 async def create_video_project(req: VideoProjectCreateRequest):
-    project_id = str(uuid4())
-    VIDEO_PROJECTS[project_id] = {
-        "id": project_id,
-        "title": req.title,
-        "idea": req.idea,
-        "audience": req.audience,
-        "target_duration_minutes": req.target_duration_minutes,
-        "language": req.language,
-        "visual_style": req.visual_style,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    return VIDEO_PROJECTS[project_id]
+    return video_store.create_project(
+        title=req.title,
+        idea=req.idea,
+        audience=req.audience,
+        target_duration_minutes=req.target_duration_minutes,
+        language=req.language,
+        visual_style=req.visual_style,
+    )
 
 
 @app.get("/video/projects/{project_id}")
 async def get_video_project(project_id: str):
-    project = VIDEO_PROJECTS.get(project_id)
+    project = video_store.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
@@ -170,41 +174,13 @@ async def get_video_project(project_id: str):
 
 @app.post("/video/projects/{project_id}/plan", response_model=ProjectPlanResponse)
 async def build_project_plan(project_id: str):
-    project = VIDEO_PROJECTS.get(project_id)
+    project = video_store.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    total_seconds = project["target_duration_minutes"] * 60
-    scenes_count = 6
-    scene_seconds = max(20, total_seconds // scenes_count)
-
-    outline = [
-        f"Hook قوي مرتبط بـ {project['idea']}",
-        "تحديد المشكلة ولماذا تهم المشاهد الآن",
-        "شرح المنهج خطوة بخطوة مع أمثلة",
-        "عرض النتائج مع لقطات مقارنة قبل/بعد",
-        "أخطاء شائعة وكيف تتجنبها",
-        "CTA واضح للخطوة التالية",
-    ]
-
-    scenes = [
-        ScenePlan(
-            scene_number=idx + 1,
-            goal=goal,
-            duration_seconds=scene_seconds,
-            camera="medium shot with slow push-in",
-            key_visual=f"Visual for: {goal}",
-        )
-        for idx, goal in enumerate(outline)
-    ]
-
-    checklist = [
-        "راجع ثبات الشخصية (face, hair, wardrobe) قبل أي توليد",
-        "ولّد start/end frame لكل مشهد ثم image-to-video",
-        "أنشئ voice-over بعد تثبيت توقيت المشاهد",
-        "راجع transitions الصوت والصورة على timeline",
-        "صدر نسخة draft ثم نسخة final بدقة أعلى",
-    ]
+    outline = build_outline(project["idea"])
+    scenes = [ScenePlan(**scene.__dict__) for scene in build_scene_plan(project)]
+    checklist = build_production_checklist()
 
     return ProjectPlanResponse(
         project_id=project_id,
@@ -216,11 +192,11 @@ async def build_project_plan(project_id: str):
 
 @app.post("/video/projects/{project_id}/prompts", response_model=PromptGenerationResponse)
 async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
-    project = VIDEO_PROJECTS.get(project_id)
+    project = video_store.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    plan = await build_project_plan(project_id)
+    scenes = build_scene_plan(project)
 
     consistency_packet = {
         "character_name": req.character_name,
@@ -231,24 +207,19 @@ async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
         "visual_style": project["visual_style"],
     }
 
-    prompts = []
-    for scene in plan.scenes:
-        base = (
-            f"{req.character_name}, {req.character_description}, wardrobe: {req.wardrobe}, "
-            f"camera: {req.camera_style}, lighting: {req.lighting_style}, "
-            f"style: {project['visual_style']}, scene goal: {scene.goal}"
+    prompts = [
+        ScenePrompt(**prompt)
+        for prompt in build_scene_prompts(
+            project=project,
+            character={
+                "character_name": req.character_name,
+                "character_description": req.character_description,
+                "wardrobe": req.wardrobe,
+                "camera_style": req.camera_style,
+                "lighting_style": req.lighting_style,
+            },
+            scenes=scenes,
         )
-        prompts.append(
-            ScenePrompt(
-                scene_number=scene.scene_number,
-                start_frame_prompt=f"START FRAME | {base} | composition: establishing frame",
-                end_frame_prompt=f"END FRAME | {base} | composition: narrative payoff frame",
-                negative_prompt="low quality, deformed face, inconsistent identity, extra limbs, blurry",
-            )
-        )
+    ]
 
-    return PromptGenerationResponse(
-        project_id=project_id,
-        consistency_packet=consistency_packet,
-        scene_prompts=prompts,
-    )
+    return PromptGenerationResponse(project_id=project_id, consistency_packet=consistency_packet, scene_prompts=prompts)
