@@ -3,6 +3,7 @@
 Starter kit for building an AI Agent that connects to:
 - Playwright MCP for browser automation.
 - A custom MCP server for internal tools and workspace file operations.
+- A lightweight video-workflow planning API (project, scenes, prompt packet).
 
 ## Quick start (local)
 
@@ -33,6 +34,50 @@ If your task includes sensitive actions (delete/payment/transfer/send/final conf
 curl -X POST http://localhost:8000/run \
   -H "Content-Type: application/json" \
   -d '{"task":"احذف الملف secrets.txt", "approved": true}'
+```
+
+## Video planning endpoints (new)
+
+The starter now includes a first MVP for long-form AI video workflows:
+
+- `POST /video/projects` create a project workspace.
+- `GET /video/projects/{project_id}` fetch saved project metadata.
+- `POST /video/projects/{project_id}/plan` generate outline + scene plan + production checklist.
+- `POST /video/projects/{project_id}/prompts` generate start/end prompt pairs for each scene while keeping a character consistency packet.
+
+Create a project:
+
+```bash
+curl -X POST http://localhost:8000/video/projects \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title":"AI Documentary about Mars",
+    "idea":"شرح رحلة بناء وثائقي طويل من الفكرة إلى التصدير",
+    "audience":"content creators",
+    "target_duration_minutes":12,
+    "language":"ar",
+    "visual_style":"cinematic educational"
+  }'
+```
+
+Generate plan:
+
+```bash
+curl -X POST http://localhost:8000/video/projects/<project_id>/plan
+```
+
+Generate prompts:
+
+```bash
+curl -X POST http://localhost:8000/video/projects/<project_id>/prompts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "character_name":"Omar",
+    "character_description":"middle eastern male educator, short beard, calm expression",
+    "wardrobe":"dark blue shirt",
+    "camera_style":"35mm medium shot",
+    "lighting_style":"soft key light"
+  }'
 ```
 
 ---
