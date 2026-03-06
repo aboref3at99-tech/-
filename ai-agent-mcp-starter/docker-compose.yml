@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  playwright:
+    image: mcr.microsoft.com/playwright/mcp
+    command:
+      [
+        "node",
+        "cli.js",
+        "--headless",
+        "--browser",
+        "chromium",
+        "--no-sandbox",
+        "--port",
+        "8931",
+        "--host",
+        "0.0.0.0",
+      ]
+    ports:
+      - "8931:8931"
+    shm_size: "1gb"
+
+  mytools:
+    build: ./mcp_mytools
+    environment:
+      - WORKSPACE_DIR=/workspace
+      - MY_AI_TOOLS_BASE_URL=${MY_AI_TOOLS_BASE_URL}
+      - MY_AI_TOOLS_TOKEN=${MY_AI_TOOLS_TOKEN}
+    volumes:
+      - ./workspace:/workspace
+    ports:
+      - "8001:8000"
+
+  agent:
+    build: ./agent_app
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - PLAYWRIGHT_MCP_URL=${PLAYWRIGHT_MCP_URL}
+      - MYTOOLS_MCP_URL=${MYTOOLS_MCP_URL}
+    depends_on:
+      - playwright
+      - mytools
+    ports:
+      - "8000:8000"
