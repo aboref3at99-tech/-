@@ -48,7 +48,15 @@ https://your-domain/
 
 - `GET /` interactive web UI for agent tasks + video workflow (mobile-ready).
 - `GET /health` liveness.
+- `GET /ready` readiness checks for required env vars and writable project storage.
 - `POST /run` execute a task.
+
+
+Readiness check:
+
+```bash
+curl http://localhost:8000/ready
+```
 
 Example run:
 

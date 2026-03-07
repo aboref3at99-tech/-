@@ -101,6 +101,28 @@ def _model_to_dict(model: BaseModel, *, exclude_unset: bool = False) -> Dict:
     return model.dict(exclude_unset=exclude_unset)
 
 
+def _readiness_checks() -> Dict[str, Dict[str, str | bool]]:
+    required_envs = ["OPENAI_API_KEY", "PLAYWRIGHT_MCP_URL", "MYTOOLS_MCP_URL"]
+    checks: Dict[str, Dict[str, str | bool]] = {}
+
+    for key in required_envs:
+        value = os.environ.get(key, "")
+        checks[key] = {
+            "ok": bool(value.strip()),
+            "message": "set" if value.strip() else "missing",
+        }
+
+    storage_path = os.environ.get("VIDEO_PROJECTS_FILE", "/tmp/ai-agent-mcp/video-projects.json")
+    storage_dir = os.path.dirname(storage_path) or "."
+    storage_ok = os.path.isdir(storage_dir) and os.access(storage_dir, os.W_OK)
+    checks["VIDEO_PROJECTS_FILE"] = {
+        "ok": storage_ok,
+        "message": f"writable_dir={storage_dir}" if storage_ok else f"not_writable_dir={storage_dir}",
+    }
+
+    return checks
+
+
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     request_id = request.headers.get("x-request-id", str(uuid4()))
@@ -332,6 +354,14 @@ async def home():
 async def health():
     return {"status": "ok"}
 
+
+
+
+@app.get("/ready")
+async def ready():
+    checks = _readiness_checks()
+    ready_state = all(bool(item["ok"]) for item in checks.values())
+    return {"ready": ready_state, "checks": checks}
 
 @app.post("/run")
 async def run(req: RunRequest):
