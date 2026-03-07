@@ -28,6 +28,8 @@ export CORS_ORIGINS="*"
 export PLAYWRIGHT_MCP_URL="http://playwright:8931/mcp"
 export MYTOOLS_MCP_URL="http://mytools:8000/mcp"
 export VIDEO_PROJECTS_FILE="/tmp/ai-agent-mcp/video-projects.json"
+export RATE_LIMIT_WINDOW_SECONDS="60"
+export RATE_LIMIT_MAX_REQUESTS="120"
 ```
 
 ### 3) Start backend
@@ -48,7 +50,7 @@ https://your-domain/
 
 - `GET /` interactive web UI for agent tasks + video workflow (mobile-ready).
 - `GET /health` liveness.
-- `GET /ready` readiness checks for required env vars and writable project storage.
+- `GET /ready` readiness checks for required env vars, writable project storage, and rate-limit config.
 - `POST /run` execute a task.
 
 
@@ -76,6 +78,8 @@ curl -X POST http://localhost:8000/run \
 
 ## Video planning endpoints
 
+> All `/video/*` endpoints require `x-user-id` header (simple owner isolation).
+
 - `POST /video/projects` create a project workspace.
 - `GET /video/projects` list saved projects (latest first).
 - `GET /video/projects/{project_id}` fetch saved project metadata (includes latest saved plan/prompts).
@@ -89,6 +93,7 @@ Create a project:
 ```bash
 curl -X POST http://localhost:8000/video/projects \
   -H "Content-Type: application/json" \
+  -H "x-user-id: mobile-user-1" \
   -d '{
     "title":"AI Documentary about Mars",
     "idea":"Explain the full long-form video production workflow from concept to export",
@@ -102,13 +107,14 @@ curl -X POST http://localhost:8000/video/projects \
 List projects:
 
 ```bash
-curl http://localhost:8000/video/projects
+curl -H "x-user-id: mobile-user-1" http://localhost:8000/video/projects
 ```
 
 Generate plan:
 
 ```bash
-curl -X POST http://localhost:8000/video/projects/<project_id>/plan
+curl -X POST http://localhost:8000/video/projects/<project_id>/plan \
+  -H "x-user-id: mobile-user-1"
 ```
 
 Generate prompts:
@@ -116,6 +122,7 @@ Generate prompts:
 ```bash
 curl -X POST http://localhost:8000/video/projects/<project_id>/prompts \
   -H "Content-Type: application/json" \
+  -H "x-user-id: mobile-user-1" \
   -d '{
     "character_name":"Omar",
     "character_description":"middle eastern male educator, short beard, calm expression",
@@ -130,13 +137,15 @@ Update project:
 ```bash
 curl -X PATCH http://localhost:8000/video/projects/<project_id> \
   -H "Content-Type: application/json" \
+  -H "x-user-id: mobile-user-1" \
   -d '{"title":"Updated mobile workflow project"}'
 ```
 
 Delete project:
 
 ```bash
-curl -X DELETE http://localhost:8000/video/projects/<project_id>
+curl -X DELETE http://localhost:8000/video/projects/<project_id> \
+  -H "x-user-id: mobile-user-1"
 ```
 
 ---
@@ -157,4 +166,5 @@ docker compose up --build
 - Expose only `agent` publicly; keep tool services private.
 - Set `CORS_ORIGINS` to your exact domain in production.
 - `VIDEO_PROJECTS_FILE` is file-based MVP storage.
+- `RATE_LIMIT_WINDOW_SECONDS` and `RATE_LIMIT_MAX_REQUESTS` control basic in-memory rate limiting.
 - For multi-instance deployments, move to shared DB storage (PostgreSQL/Redis).

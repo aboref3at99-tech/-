@@ -10,6 +10,7 @@ from uuid import uuid4
 @dataclass
 class VideoProject:
     id: str
+    owner_id: str
     title: str
     idea: str
     audience: str
@@ -20,6 +21,8 @@ class VideoProject:
     updated_at: str
     last_plan: Dict[str, Any] | None = None
     last_prompts: Dict[str, Any] | None = None
+    plan_versions: List[Dict[str, Any]] | None = None
+    prompt_versions: List[Dict[str, Any]] | None = None
 
 
 @dataclass
@@ -58,6 +61,7 @@ class VideoProjectStore:
 
     def create_project(
         self,
+        owner_id: str,
         title: str,
         idea: str,
         audience: str,
@@ -68,6 +72,7 @@ class VideoProjectStore:
         timestamp = datetime.now(timezone.utc).isoformat()
         project = VideoProject(
             id=str(uuid4()),
+            owner_id=owner_id,
             title=title,
             idea=idea,
             audience=audience,
@@ -76,6 +81,8 @@ class VideoProjectStore:
             visual_style=visual_style,
             created_at=timestamp,
             updated_at=timestamp,
+            plan_versions=[],
+            prompt_versions=[],
         )
 
         project_payload = asdict(project)
@@ -85,20 +92,23 @@ class VideoProjectStore:
 
         return project_payload
 
-    def get_project(self, project_id: str) -> Dict[str, Any] | None:
+    def get_project(self, project_id: str, owner_id: str) -> Dict[str, Any] | None:
         with self._lock:
-            return self._projects.get(project_id)
+            project = self._projects.get(project_id)
+            if not project or project.get("owner_id") != owner_id:
+                return None
+            return project
 
-    def list_projects(self) -> List[Dict[str, Any]]:
+    def list_projects(self, owner_id: str) -> List[Dict[str, Any]]:
         with self._lock:
-            projects = list(self._projects.values())
+            projects = [project for project in self._projects.values() if project.get("owner_id") == owner_id]
 
         return sorted(projects, key=lambda item: item.get("updated_at", item.get("created_at", "")), reverse=True)
 
-    def update_project(self, project_id: str, updates: Dict[str, Any]) -> Dict[str, Any] | None:
+    def update_project(self, project_id: str, owner_id: str, updates: Dict[str, Any]) -> Dict[str, Any] | None:
         with self._lock:
             project = self._projects.get(project_id)
-            if not project:
+            if not project or project.get("owner_id") != owner_id:
                 return None
 
             allowed = {"title", "idea", "audience", "target_duration_minutes", "language", "visual_style"}
@@ -111,31 +121,44 @@ class VideoProjectStore:
             self._persist()
             return project
 
-    def delete_project(self, project_id: str) -> bool:
+    def delete_project(self, project_id: str, owner_id: str) -> bool:
         with self._lock:
-            if project_id not in self._projects:
+            project = self._projects.get(project_id)
+            if not project or project.get("owner_id") != owner_id:
                 return False
             del self._projects[project_id]
             self._persist()
             return True
 
-    def save_plan(self, project_id: str, plan_payload: Dict[str, Any]) -> Dict[str, Any] | None:
+    def save_plan(self, project_id: str, owner_id: str, plan_payload: Dict[str, Any]) -> Dict[str, Any] | None:
         with self._lock:
             project = self._projects.get(project_id)
-            if not project:
+            if not project or project.get("owner_id") != owner_id:
                 return None
+
+            versioned_payload = {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "payload": plan_payload,
+            }
             project["last_plan"] = plan_payload
+            project.setdefault("plan_versions", []).append(versioned_payload)
             project["updated_at"] = datetime.now(timezone.utc).isoformat()
             self._projects[project_id] = project
             self._persist()
             return project
 
-    def save_prompts(self, project_id: str, prompts_payload: Dict[str, Any]) -> Dict[str, Any] | None:
+    def save_prompts(self, project_id: str, owner_id: str, prompts_payload: Dict[str, Any]) -> Dict[str, Any] | None:
         with self._lock:
             project = self._projects.get(project_id)
-            if not project:
+            if not project or project.get("owner_id") != owner_id:
                 return None
+
+            versioned_payload = {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "payload": prompts_payload,
+            }
             project["last_prompts"] = prompts_payload
+            project.setdefault("prompt_versions", []).append(versioned_payload)
             project["updated_at"] = datetime.now(timezone.utc).isoformat()
             self._projects[project_id] = project
             self._persist()

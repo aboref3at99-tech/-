@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Dict, List
 from uuid import uuid4
 
@@ -94,6 +95,30 @@ video_store = VideoProjectStore(
     os.environ.get("VIDEO_PROJECTS_FILE", "/tmp/ai-agent-mcp/video-projects.json")
 )
 
+RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "60"))
+RATE_LIMIT_MAX_REQUESTS = int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", "120"))
+REQUEST_COUNTERS: Dict[str, List[float]] = {}
+
+
+def _extract_user_id(request: Request) -> str:
+    user_id = request.headers.get("x-user-id", "").strip()
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Missing x-user-id header")
+    return user_id
+
+
+def _check_rate_limit(request: Request, key_prefix: str) -> None:
+    identity = request.headers.get("x-user-id") or request.client.host or "anonymous"
+    key = f"{key_prefix}:{identity}"
+    now = time.time()
+    history = REQUEST_COUNTERS.get(key, [])
+    cutoff = now - RATE_LIMIT_WINDOW_SECONDS
+    history = [ts for ts in history if ts >= cutoff]
+    if len(history) >= RATE_LIMIT_MAX_REQUESTS:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    history.append(now)
+    REQUEST_COUNTERS[key] = history
+
 
 def _model_to_dict(model: BaseModel, *, exclude_unset: bool = False) -> Dict:
     if hasattr(model, "model_dump"):
@@ -119,6 +144,8 @@ def _readiness_checks() -> Dict[str, Dict[str, str | bool]]:
         "ok": storage_ok,
         "message": f"writable_dir={storage_dir}" if storage_ok else f"not_writable_dir={storage_dir}",
     }
+
+    checks["RATE_LIMIT"] = {"ok": True, "message": f"{RATE_LIMIT_MAX_REQUESTS}/{RATE_LIMIT_WINDOW_SECONDS}s"}
 
     return checks
 
@@ -155,6 +182,7 @@ async def home():
       <body>
         <h2>AI Agent + Video Workflow Studio (Mobile Ready)</h2>
         <p>Use this page from your phone browser to run tasks and manage your long-form video workflow.</p>
+        <input id="userId" placeholder="User ID" value="mobile-user-1"/>
 
         <div class="grid">
           <div class="card">
@@ -215,7 +243,7 @@ async def home():
 
           async function api(path, options = {}) {
             const response = await fetch(path, {
-              headers: {'Content-Type': 'application/json'},
+              headers: {'Content-Type': 'application/json', 'x-user-id': document.getElementById('userId').value || 'mobile-user-1'},
               ...options,
             });
             const payload = await response.json();
@@ -364,7 +392,8 @@ async def ready():
     return {"ready": ready_state, "checks": checks}
 
 @app.post("/run")
-async def run(req: RunRequest):
+async def run(req: RunRequest, request: Request):
+    _check_rate_limit(request, "run")
     try:
         output = await run_task(req.task, approved=req.approved)
     except TimeoutError:
@@ -376,8 +405,11 @@ async def run(req: RunRequest):
 
 
 @app.post("/video/projects")
-async def create_video_project(req: VideoProjectCreateRequest):
+async def create_video_project(req: VideoProjectCreateRequest, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
     return video_store.create_project(
+        owner_id=user_id,
         title=req.title,
         idea=req.idea,
         audience=req.audience,
@@ -388,37 +420,47 @@ async def create_video_project(req: VideoProjectCreateRequest):
 
 
 @app.get("/video/projects")
-async def list_video_projects():
-    return {"projects": video_store.list_projects()}
+async def list_video_projects(request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    return {"projects": video_store.list_projects(user_id)}
 
 
 @app.get("/video/projects/{project_id}")
-async def get_video_project(project_id: str):
-    project = video_store.get_project(project_id)
+async def get_video_project(project_id: str, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    project = video_store.get_project(project_id, user_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
 
 
 @app.patch("/video/projects/{project_id}")
-async def update_video_project(project_id: str, req: VideoProjectUpdateRequest):
-    updated = video_store.update_project(project_id, _model_to_dict(req, exclude_unset=True))
+async def update_video_project(project_id: str, req: VideoProjectUpdateRequest, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    updated = video_store.update_project(project_id, user_id, _model_to_dict(req, exclude_unset=True))
     if not updated:
         raise HTTPException(status_code=404, detail="Project not found")
     return updated
 
 
 @app.delete("/video/projects/{project_id}")
-async def delete_video_project(project_id: str):
-    deleted = video_store.delete_project(project_id)
+async def delete_video_project(project_id: str, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    deleted = video_store.delete_project(project_id, user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"deleted": True, "project_id": project_id}
 
 
 @app.post("/video/projects/{project_id}/plan", response_model=ProjectPlanResponse)
-async def build_project_plan(project_id: str):
-    project = video_store.get_project(project_id)
+async def build_project_plan(project_id: str, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    project = video_store.get_project(project_id, user_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -432,13 +474,15 @@ async def build_project_plan(project_id: str):
         scenes=scenes,
         production_checklist=checklist,
     )
-    video_store.save_plan(project_id, _model_to_dict(plan_response))
+    video_store.save_plan(project_id, user_id, _model_to_dict(plan_response))
     return plan_response
 
 
 @app.post("/video/projects/{project_id}/prompts", response_model=PromptGenerationResponse)
-async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
-    project = video_store.get_project(project_id)
+async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    project = video_store.get_project(project_id, user_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -471,5 +515,5 @@ async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
         consistency_packet=consistency_packet,
         scene_prompts=prompts,
     )
-    video_store.save_prompts(project_id, _model_to_dict(prompts_response))
+    video_store.save_prompts(project_id, user_id, _model_to_dict(prompts_response))
     return prompts_response

@@ -16,6 +16,7 @@ class VideoWorkflowTests(unittest.TestCase):
             storage_file = Path(tmp) / "video-projects.json"
             store = VideoProjectStore(str(storage_file))
             created = store.create_project(
+                owner_id="u1",
                 title="Cloud Project",
                 idea="Workflow for long-form AI videos",
                 audience="creators",
@@ -25,17 +26,19 @@ class VideoWorkflowTests(unittest.TestCase):
             )
 
             reloaded_store = VideoProjectStore(str(storage_file))
-            loaded = reloaded_store.get_project(created["id"])
+            loaded = reloaded_store.get_project(created["id"], "u1")
 
             self.assertIsNotNone(loaded)
             self.assertEqual(loaded["title"], "Cloud Project")
             self.assertIn("updated_at", loaded)
+            self.assertEqual(loaded["owner_id"], "u1")
 
-    def test_list_projects_returns_latest_first(self):
+    def test_list_projects_returns_latest_first_and_owner_scoped(self):
         with tempfile.TemporaryDirectory() as tmp:
             storage_file = Path(tmp) / "video-projects.json"
             store = VideoProjectStore(str(storage_file))
             first = store.create_project(
+                owner_id="u1",
                 title="First",
                 idea="First workflow",
                 audience="creators",
@@ -44,6 +47,7 @@ class VideoWorkflowTests(unittest.TestCase):
                 visual_style="cinematic",
             )
             second = store.create_project(
+                owner_id="u1",
                 title="Second",
                 idea="Second workflow",
                 audience="creators",
@@ -51,8 +55,18 @@ class VideoWorkflowTests(unittest.TestCase):
                 language="en",
                 visual_style="cinematic",
             )
+            store.create_project(
+                owner_id="u2",
+                title="Other Owner",
+                idea="Other owner workflow",
+                audience="creators",
+                target_duration_minutes=10,
+                language="en",
+                visual_style="cinematic",
+            )
 
-            listed = store.list_projects()
+            listed = store.list_projects("u1")
+            self.assertEqual(len(listed), 2)
             self.assertEqual(listed[0]["id"], second["id"])
             self.assertEqual(listed[1]["id"], first["id"])
 
@@ -61,6 +75,7 @@ class VideoWorkflowTests(unittest.TestCase):
             storage_file = Path(tmp) / "video-projects.json"
             store = VideoProjectStore(str(storage_file))
             created = store.create_project(
+                owner_id="u1",
                 title="Original",
                 idea="Original idea text",
                 audience="creators",
@@ -69,25 +84,28 @@ class VideoWorkflowTests(unittest.TestCase):
                 visual_style="cinematic",
             )
 
-            updated = store.update_project(created["id"], {"title": "Updated Title"})
+            updated = store.update_project(created["id"], "u1", {"title": "Updated Title"})
             self.assertIsNotNone(updated)
             self.assertEqual(updated["title"], "Updated Title")
 
-            save_plan_result = store.save_plan(created["id"], {"outline": ["one", "two"]})
+            save_plan_result = store.save_plan(created["id"], "u1", {"outline": ["one", "two"]})
             self.assertIsNotNone(save_plan_result)
             self.assertIn("last_plan", save_plan_result)
+            self.assertEqual(len(save_plan_result["plan_versions"]), 1)
 
-            save_prompts_result = store.save_prompts(created["id"], {"scene_prompts": [1, 2]})
+            save_prompts_result = store.save_prompts(created["id"], "u1", {"scene_prompts": [1, 2]})
             self.assertIsNotNone(save_prompts_result)
             self.assertIn("last_prompts", save_prompts_result)
+            self.assertEqual(len(save_prompts_result["prompt_versions"]), 1)
 
-            deleted = store.delete_project(created["id"])
+            deleted = store.delete_project(created["id"], "u1")
             self.assertTrue(deleted)
-            self.assertIsNone(store.get_project(created["id"]))
+            self.assertIsNone(store.get_project(created["id"], "u1"))
 
     def test_prompt_generation_matches_scene_count(self):
         project = {
             "id": "p1",
+            "owner_id": "u1",
             "title": "Video",
             "idea": "Explain AI production pipeline",
             "audience": "creators",
