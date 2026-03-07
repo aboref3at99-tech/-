@@ -29,6 +29,7 @@ class VideoWorkflowTests(unittest.TestCase):
 
             self.assertIsNotNone(loaded)
             self.assertEqual(loaded["title"], "Cloud Project")
+            self.assertIn("updated_at", loaded)
 
     def test_list_projects_returns_latest_first(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -55,6 +56,35 @@ class VideoWorkflowTests(unittest.TestCase):
             self.assertEqual(listed[0]["id"], second["id"])
             self.assertEqual(listed[1]["id"], first["id"])
 
+    def test_update_delete_and_save_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            storage_file = Path(tmp) / "video-projects.json"
+            store = VideoProjectStore(str(storage_file))
+            created = store.create_project(
+                title="Original",
+                idea="Original idea text",
+                audience="creators",
+                target_duration_minutes=9,
+                language="en",
+                visual_style="cinematic",
+            )
+
+            updated = store.update_project(created["id"], {"title": "Updated Title"})
+            self.assertIsNotNone(updated)
+            self.assertEqual(updated["title"], "Updated Title")
+
+            save_plan_result = store.save_plan(created["id"], {"outline": ["one", "two"]})
+            self.assertIsNotNone(save_plan_result)
+            self.assertIn("last_plan", save_plan_result)
+
+            save_prompts_result = store.save_prompts(created["id"], {"scene_prompts": [1, 2]})
+            self.assertIsNotNone(save_prompts_result)
+            self.assertIn("last_prompts", save_prompts_result)
+
+            deleted = store.delete_project(created["id"])
+            self.assertTrue(deleted)
+            self.assertIsNone(store.get_project(created["id"]))
+
     def test_prompt_generation_matches_scene_count(self):
         project = {
             "id": "p1",
@@ -65,6 +95,7 @@ class VideoWorkflowTests(unittest.TestCase):
             "language": "en",
             "visual_style": "cinematic educational",
             "created_at": "2025-01-01T00:00:00+00:00",
+            "updated_at": "2025-01-01T00:00:00+00:00",
         }
         scenes = build_scene_plan(project)
         prompts = build_scene_prompts(

@@ -45,6 +45,15 @@ class VideoProjectCreateRequest(BaseModel):
     visual_style: str = Field(default="cinematic educational")
 
 
+class VideoProjectUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=160)
+    idea: str | None = Field(default=None, min_length=10)
+    audience: str | None = Field(default=None, min_length=3, max_length=120)
+    target_duration_minutes: int | None = Field(default=None, ge=1, le=120)
+    language: str | None = None
+    visual_style: str | None = None
+
+
 class ScenePlan(BaseModel):
     scene_number: int
     goal: str
@@ -84,6 +93,12 @@ class PromptGenerationResponse(BaseModel):
 video_store = VideoProjectStore(
     os.environ.get("VIDEO_PROJECTS_FILE", "/tmp/ai-agent-mcp/video-projects.json")
 )
+
+
+def _model_to_dict(model: BaseModel, *, exclude_unset: bool = False) -> Dict:
+    if hasattr(model, "model_dump"):
+        return model.model_dump(exclude_unset=exclude_unset)
+    return model.dict(exclude_unset=exclude_unset)
 
 
 @app.middleware("http")
@@ -149,7 +164,11 @@ async def home():
               <button onclick="listProjects()">List Projects</button>
               <button onclick="loadProject()">Load Project</button>
             </div>
-            <button onclick="generatePlan()">Generate Scene Plan</button>
+            <div class="inline">
+              <button onclick="generatePlan()">Generate Scene Plan</button>
+              <button onclick="deleteProject()" style="background:#991b1b;">Delete Project</button>
+            </div>
+            <button onclick="renameProject()">Quick Update Title</button>
           </div>
 
           <div class="card">
@@ -253,6 +272,36 @@ async def home():
             }
           }
 
+          async function renameProject() {
+            try {
+              const projectId = document.getElementById('projectId').value.trim();
+              const title = document.getElementById('title').value.trim();
+              if (!projectId) return show('Please provide a project ID.');
+              if (!title) return show('Please provide a title.');
+              show('Updating project...');
+              const payload = await api(`/video/projects/${projectId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({title}),
+              });
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
+          }
+
+          async function deleteProject() {
+            try {
+              const projectId = document.getElementById('projectId').value.trim();
+              if (!projectId) return show('Please provide a project ID.');
+              show('Deleting project...');
+              const payload = await api(`/video/projects/${projectId}`, {method: 'DELETE'});
+              document.getElementById('projectId').value = '';
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
+          }
+
           async function generatePrompts() {
             try {
               const projectId = document.getElementById('projectId').value.trim();
@@ -321,6 +370,22 @@ async def get_video_project(project_id: str):
     return project
 
 
+@app.patch("/video/projects/{project_id}")
+async def update_video_project(project_id: str, req: VideoProjectUpdateRequest):
+    updated = video_store.update_project(project_id, _model_to_dict(req, exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return updated
+
+
+@app.delete("/video/projects/{project_id}")
+async def delete_video_project(project_id: str):
+    deleted = video_store.delete_project(project_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"deleted": True, "project_id": project_id}
+
+
 @app.post("/video/projects/{project_id}/plan", response_model=ProjectPlanResponse)
 async def build_project_plan(project_id: str):
     project = video_store.get_project(project_id)
@@ -331,12 +396,14 @@ async def build_project_plan(project_id: str):
     scenes = [ScenePlan(**scene.__dict__) for scene in build_scene_plan(project)]
     checklist = build_production_checklist()
 
-    return ProjectPlanResponse(
+    plan_response = ProjectPlanResponse(
         project_id=project_id,
         outline=outline,
         scenes=scenes,
         production_checklist=checklist,
     )
+    video_store.save_plan(project_id, _model_to_dict(plan_response))
+    return plan_response
 
 
 @app.post("/video/projects/{project_id}/prompts", response_model=PromptGenerationResponse)
@@ -369,8 +436,10 @@ async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
         )
     ]
 
-    return PromptGenerationResponse(
+    prompts_response = PromptGenerationResponse(
         project_id=project_id,
         consistency_packet=consistency_packet,
         scene_prompts=prompts,
     )
+    video_store.save_prompts(project_id, _model_to_dict(prompts_response))
+    return prompts_response

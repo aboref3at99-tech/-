@@ -17,6 +17,9 @@ class VideoProject:
     language: str
     visual_style: str
     created_at: str
+    updated_at: str
+    last_plan: Dict[str, Any] | None = None
+    last_prompts: Dict[str, Any] | None = None
 
 
 @dataclass
@@ -62,6 +65,7 @@ class VideoProjectStore:
         language: str,
         visual_style: str,
     ) -> Dict[str, Any]:
+        timestamp = datetime.now(timezone.utc).isoformat()
         project = VideoProject(
             id=str(uuid4()),
             title=title,
@@ -70,7 +74,8 @@ class VideoProjectStore:
             target_duration_minutes=target_duration_minutes,
             language=language,
             visual_style=visual_style,
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=timestamp,
+            updated_at=timestamp,
         )
 
         project_payload = asdict(project)
@@ -88,7 +93,53 @@ class VideoProjectStore:
         with self._lock:
             projects = list(self._projects.values())
 
-        return sorted(projects, key=lambda item: item.get("created_at", ""), reverse=True)
+        return sorted(projects, key=lambda item: item.get("updated_at", item.get("created_at", "")), reverse=True)
+
+    def update_project(self, project_id: str, updates: Dict[str, Any]) -> Dict[str, Any] | None:
+        with self._lock:
+            project = self._projects.get(project_id)
+            if not project:
+                return None
+
+            allowed = {"title", "idea", "audience", "target_duration_minutes", "language", "visual_style"}
+            for key, value in updates.items():
+                if key in allowed and value is not None:
+                    project[key] = value
+
+            project["updated_at"] = datetime.now(timezone.utc).isoformat()
+            self._projects[project_id] = project
+            self._persist()
+            return project
+
+    def delete_project(self, project_id: str) -> bool:
+        with self._lock:
+            if project_id not in self._projects:
+                return False
+            del self._projects[project_id]
+            self._persist()
+            return True
+
+    def save_plan(self, project_id: str, plan_payload: Dict[str, Any]) -> Dict[str, Any] | None:
+        with self._lock:
+            project = self._projects.get(project_id)
+            if not project:
+                return None
+            project["last_plan"] = plan_payload
+            project["updated_at"] = datetime.now(timezone.utc).isoformat()
+            self._projects[project_id] = project
+            self._persist()
+            return project
+
+    def save_prompts(self, project_id: str, prompts_payload: Dict[str, Any]) -> Dict[str, Any] | None:
+        with self._lock:
+            project = self._projects.get(project_id)
+            if not project:
+                return None
+            project["last_prompts"] = prompts_payload
+            project["updated_at"] = datetime.now(timezone.utc).isoformat()
+            self._projects[project_id] = project
+            self._persist()
+            return project
 
 
 def build_outline(idea: str) -> List[str]:

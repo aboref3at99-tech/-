@@ -70,9 +70,11 @@ curl -X POST http://localhost:8000/run \
 
 - `POST /video/projects` create a project workspace.
 - `GET /video/projects` list saved projects (latest first).
-- `GET /video/projects/{project_id}` fetch saved project metadata.
-- `POST /video/projects/{project_id}/plan` generate outline + scene plan + production checklist.
-- `POST /video/projects/{project_id}/prompts` generate start/end prompt pairs for each scene with a character consistency packet.
+- `GET /video/projects/{project_id}` fetch saved project metadata (includes latest saved plan/prompts).
+- `PATCH /video/projects/{project_id}` update project fields (title, idea, duration, style, etc.).
+- `DELETE /video/projects/{project_id}` delete a project.
+- `POST /video/projects/{project_id}/plan` generate outline + scene plan + production checklist (also saved in project metadata).
+- `POST /video/projects/{project_id}/prompts` generate start/end prompt pairs for each scene with a character consistency packet (also saved in project metadata).
 
 Create a project:
 
@@ -113,6 +115,20 @@ curl -X POST http://localhost:8000/video/projects/<project_id>/prompts \
     "camera_style":"35mm medium shot",
     "lighting_style":"soft key light"
   }'
+```
+
+Update project:
+
+```bash
+curl -X PATCH http://localhost:8000/video/projects/<project_id> \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Updated mobile workflow project"}'
+```
+
+Delete project:
+
+```bash
+curl -X DELETE http://localhost:8000/video/projects/<project_id>
 ```
 
 ---
