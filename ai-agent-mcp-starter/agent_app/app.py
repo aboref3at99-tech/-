@@ -100,22 +100,24 @@ async def home():
     <html>
       <head>
         <title>AI Agent MCP Starter</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <style>
-          body {font-family: Arial, sans-serif; max-width: 1100px; margin: 1.5rem auto; color: #1e1e1e;}
-          .grid {display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;}
-          .card {border: 1px solid #ddd; border-radius: 10px; padding: 1rem; background: #fafafa;}
-          input, textarea, select, button {width: 100%; box-sizing: border-box; margin-top: .5rem; padding: .6rem; border-radius: 8px; border: 1px solid #ccc;}
+          body {font-family: Arial, sans-serif; max-width: 1100px; margin: 1rem auto; color: #1e1e1e; padding: 0 .75rem;}
+          .grid {display: grid; grid-template-columns: 1fr; gap: .75rem;}
+          .card {border: 1px solid #ddd; border-radius: 10px; padding: .85rem; background: #fafafa;}
+          input, textarea, select, button {width: 100%; box-sizing: border-box; margin-top: .5rem; padding: .7rem; border-radius: 8px; border: 1px solid #ccc; font-size: 16px;}
           button {background: #111827; color: #fff; border: none; cursor: pointer;}
           button:hover {background: #0b1220;}
           .inline {display:flex; gap:.75rem;}
           .inline > * {flex:1;}
           pre {background:#0f172a; color:#e2e8f0; padding:1rem; border-radius:10px; white-space: pre-wrap; min-height: 180px;}
           h2, h3 {margin: .4rem 0;}
+          @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; gap: 1rem; } .card { padding: 1rem; } }
         </style>
       </head>
       <body>
-        <h2>AI Agent + Video Workflow Studio (Cloud Ready)</h2>
-        <p>Use this page to run tasks and manage your long-form video planning workflow.</p>
+        <h2>AI Agent + Video Workflow Studio (Mobile Ready)</h2>
+        <p>Use this page from your phone browser to run tasks and manage your long-form video workflow.</p>
 
         <div class="grid">
           <div class="card">
