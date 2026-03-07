@@ -41,7 +41,7 @@ class VideoProjectCreateRequest(BaseModel):
     idea: str = Field(min_length=10)
     audience: str = Field(min_length=3, max_length=120)
     target_duration_minutes: int = Field(default=8, ge=1, le=120)
-    language: str = Field(default="ar")
+    language: str = Field(default="en")
     visual_style: str = Field(default="cinematic educational")
 
 
@@ -102,8 +102,9 @@ async def home():
       <body style=\"font-family: Arial, sans-serif; max-width: 920px; margin: 2rem auto;\">
         <h2>AI Agent + MCP + Browser</h2>
         <p>Quick web runner for cloud deployments.</p>
+        <p>Video planning endpoints are now available for long-form content workflows.</p>
         <form method=\"post\" action=\"/run\" onsubmit=\"return false;\">
-          <textarea id=\"task\" rows=\"6\" style=\"width:100%;\" placeholder=\"اكتب المهمة هنا\"></textarea><br/><br/>
+          <textarea id=\"task\" rows=\"6\" style=\"width:100%;\" placeholder=\"Type your task here\"></textarea><br/><br/>
           <label><input type=\"checkbox\" id=\"approved\"/> approved (for sensitive actions)</label><br/><br/>
           <button onclick=\"runTask()\">Run</button>
         </form>
@@ -222,4 +223,8 @@ async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
         )
     ]
 
-    return PromptGenerationResponse(project_id=project_id, consistency_packet=consistency_packet, scene_prompts=prompts)
+    return PromptGenerationResponse(
+        project_id=project_id,
+        consistency_packet=consistency_packet,
+        scene_prompts=prompts,
+    )

@@ -2,7 +2,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from video_workflow import VideoProjectStore, build_scene_plan, build_scene_prompts
+from video_workflow import (
+    VideoProjectStore,
+    build_production_checklist,
+    build_scene_plan,
+    build_scene_prompts,
+)
 
 
 class VideoWorkflowTests(unittest.TestCase):
@@ -51,6 +56,12 @@ class VideoWorkflowTests(unittest.TestCase):
 
         self.assertEqual(len(prompts), len(scenes))
         self.assertTrue(prompts[0]["start_frame_prompt"].startswith("START FRAME"))
+
+    def test_checklist_is_english_and_non_empty(self):
+        checklist = build_production_checklist()
+
+        self.assertGreater(len(checklist), 0)
+        self.assertIn("character consistency", checklist[0].lower())
 
 
 if __name__ == "__main__":

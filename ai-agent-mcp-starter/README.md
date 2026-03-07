@@ -25,7 +25,7 @@ Example run:
 ```bash
 curl -X POST http://localhost:8000/run \
   -H "Content-Type: application/json" \
-  -d '{"task":"افتح ويكيبيديا، روح لصفحة OpenAI وخدلي ملخص فقرتين."}'
+  -d '{"task":"Open Wikipedia, navigate to OpenAI page, and summarize two paragraphs."}'
 ```
 
 If your task includes sensitive actions (delete/payment/transfer/send/final confirm), pass `approved: true` explicitly:
@@ -33,7 +33,7 @@ If your task includes sensitive actions (delete/payment/transfer/send/final conf
 ```bash
 curl -X POST http://localhost:8000/run \
   -H "Content-Type: application/json" \
-  -d '{"task":"احذف الملف secrets.txt", "approved": true}'
+  -d '{"task":"Delete file secrets.txt", "approved": true}'
 ```
 
 ## Video planning endpoints (new)
@@ -52,10 +52,10 @@ curl -X POST http://localhost:8000/video/projects \
   -H "Content-Type: application/json" \
   -d '{
     "title":"AI Documentary about Mars",
-    "idea":"شرح رحلة بناء وثائقي طويل من الفكرة إلى التصدير",
+    "idea":"Explain the full long-form video production workflow from concept to export",
     "audience":"content creators",
     "target_duration_minutes":12,
-    "language":"ar",
+    "language":"en",
     "visual_style":"cinematic educational"
   }'
 ```
