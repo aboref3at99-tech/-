@@ -84,6 +84,12 @@ class VideoProjectStore:
         with self._lock:
             return self._projects.get(project_id)
 
+    def list_projects(self) -> List[Dict[str, Any]]:
+        with self._lock:
+            projects = list(self._projects.values())
+
+        return sorted(projects, key=lambda item: item.get("created_at", ""), reverse=True)
+
 
 def build_outline(idea: str) -> List[str]:
     return [

@@ -16,7 +16,7 @@ docker compose up --build
 
 ## Endpoints
 
-- `GET /` lightweight web UI (useful for cloud test).
+- `GET /` interactive web UI for both agent tasks and video workflow operations.
 - `GET /health` liveness.
 - `POST /run` execute a task.
 
@@ -41,6 +41,7 @@ curl -X POST http://localhost:8000/run \
 The starter now includes a first MVP for long-form AI video workflows:
 
 - `POST /video/projects` create a project workspace.
+- `GET /video/projects` list saved projects (latest first).
 - `GET /video/projects/{project_id}` fetch saved project metadata.
 - `POST /video/projects/{project_id}/plan` generate outline + scene plan + production checklist.
 - `POST /video/projects/{project_id}/prompts` generate start/end prompt pairs for each scene while keeping a character consistency packet.
@@ -58,6 +59,12 @@ curl -X POST http://localhost:8000/video/projects \
     "language":"en",
     "visual_style":"cinematic educational"
   }'
+```
+
+List projects:
+
+```bash
+curl http://localhost:8000/video/projects
 ```
 
 Generate plan:

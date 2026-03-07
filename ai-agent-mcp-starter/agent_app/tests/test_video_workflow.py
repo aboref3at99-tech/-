@@ -20,7 +20,7 @@ class VideoWorkflowTests(unittest.TestCase):
                 idea="Workflow for long-form AI videos",
                 audience="creators",
                 target_duration_minutes=12,
-                language="ar",
+                language="en",
                 visual_style="cinematic",
             )
 
@@ -30,6 +30,31 @@ class VideoWorkflowTests(unittest.TestCase):
             self.assertIsNotNone(loaded)
             self.assertEqual(loaded["title"], "Cloud Project")
 
+    def test_list_projects_returns_latest_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            storage_file = Path(tmp) / "video-projects.json"
+            store = VideoProjectStore(str(storage_file))
+            first = store.create_project(
+                title="First",
+                idea="First workflow",
+                audience="creators",
+                target_duration_minutes=10,
+                language="en",
+                visual_style="cinematic",
+            )
+            second = store.create_project(
+                title="Second",
+                idea="Second workflow",
+                audience="creators",
+                target_duration_minutes=10,
+                language="en",
+                visual_style="cinematic",
+            )
+
+            listed = store.list_projects()
+            self.assertEqual(listed[0]["id"], second["id"])
+            self.assertEqual(listed[1]["id"], first["id"])
+
     def test_prompt_generation_matches_scene_count(self):
         project = {
             "id": "p1",
@@ -37,7 +62,7 @@ class VideoWorkflowTests(unittest.TestCase):
             "idea": "Explain AI production pipeline",
             "audience": "creators",
             "target_duration_minutes": 10,
-            "language": "ar",
+            "language": "en",
             "visual_style": "cinematic educational",
             "created_at": "2025-01-01T00:00:00+00:00",
         }

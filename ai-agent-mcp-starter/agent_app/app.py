@@ -98,37 +98,178 @@ async def add_request_id(request: Request, call_next):
 async def home():
     return """
     <html>
-      <head><title>AI Agent MCP Starter</title></head>
-      <body style=\"font-family: Arial, sans-serif; max-width: 920px; margin: 2rem auto;\">
-        <h2>AI Agent + MCP + Browser</h2>
-        <p>Quick web runner for cloud deployments.</p>
-        <p>Video planning endpoints are now available for long-form content workflows.</p>
-        <form method=\"post\" action=\"/run\" onsubmit=\"return false;\">
-          <textarea id=\"task\" rows=\"6\" style=\"width:100%;\" placeholder=\"Type your task here\"></textarea><br/><br/>
-          <label><input type=\"checkbox\" id=\"approved\"/> approved (for sensitive actions)</label><br/><br/>
-          <button onclick=\"runTask()\">Run</button>
-        </form>
-        <h3>New: Video workflow planning endpoints</h3>
-        <ul>
-          <li><code>POST /video/projects</code></li>
-          <li><code>POST /video/projects/{project_id}/plan</code></li>
-          <li><code>POST /video/projects/{project_id}/prompts</code></li>
-        </ul>
-        <pre id=\"out\" style=\"background:#111;color:#ddd;padding:1rem;white-space:pre-wrap;\"></pre>
+      <head>
+        <title>AI Agent MCP Starter</title>
+        <style>
+          body {font-family: Arial, sans-serif; max-width: 1100px; margin: 1.5rem auto; color: #1e1e1e;}
+          .grid {display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;}
+          .card {border: 1px solid #ddd; border-radius: 10px; padding: 1rem; background: #fafafa;}
+          input, textarea, select, button {width: 100%; box-sizing: border-box; margin-top: .5rem; padding: .6rem; border-radius: 8px; border: 1px solid #ccc;}
+          button {background: #111827; color: #fff; border: none; cursor: pointer;}
+          button:hover {background: #0b1220;}
+          .inline {display:flex; gap:.75rem;}
+          .inline > * {flex:1;}
+          pre {background:#0f172a; color:#e2e8f0; padding:1rem; border-radius:10px; white-space: pre-wrap; min-height: 180px;}
+          h2, h3 {margin: .4rem 0;}
+        </style>
+      </head>
+      <body>
+        <h2>AI Agent + Video Workflow Studio (Cloud Ready)</h2>
+        <p>Use this page to run tasks and manage your long-form video planning workflow.</p>
+
+        <div class="grid">
+          <div class="card">
+            <h3>1) Run Generic Agent Task</h3>
+            <textarea id="task" rows="5" placeholder="Type your task here"></textarea>
+            <label><input type="checkbox" id="approved" style="width:auto; margin-right:.4rem;"/>approved for sensitive actions</label>
+            <button onclick="runTask()">Run Task</button>
+          </div>
+
+          <div class="card">
+            <h3>2) Create Video Project</h3>
+            <input id="title" placeholder="Project title" value="Long-form AI Tutorial"/>
+            <textarea id="idea" rows="3" placeholder="Project idea">Build a long AI tutorial from concept to final export.</textarea>
+            <div class="inline">
+              <input id="audience" placeholder="Audience" value="content creators"/>
+              <input id="duration" type="number" min="1" max="120" value="12"/>
+            </div>
+            <div class="inline">
+              <input id="language" placeholder="Language" value="en"/>
+              <input id="visualStyle" placeholder="Visual style" value="cinematic educational"/>
+            </div>
+            <button onclick="createProject()">Create Project</button>
+          </div>
+
+          <div class="card">
+            <h3>3) Load / Plan</h3>
+            <input id="projectId" placeholder="Project ID"/>
+            <div class="inline">
+              <button onclick="listProjects()">List Projects</button>
+              <button onclick="loadProject()">Load Project</button>
+            </div>
+            <button onclick="generatePlan()">Generate Scene Plan</button>
+          </div>
+
+          <div class="card">
+            <h3>4) Generate Scene Prompts</h3>
+            <input id="characterName" placeholder="Character name" value="Omar"/>
+            <textarea id="characterDescription" rows="2" placeholder="Character description">Middle eastern male educator with short beard and calm expression.</textarea>
+            <div class="inline">
+              <input id="wardrobe" placeholder="Wardrobe" value="dark blue shirt"/>
+              <input id="cameraStyle" placeholder="Camera style" value="35mm medium shot"/>
+            </div>
+            <input id="lightingStyle" placeholder="Lighting style" value="soft key light"/>
+            <button onclick="generatePrompts()">Generate Prompts</button>
+          </div>
+        </div>
+
+        <h3>Output</h3>
+        <pre id="out"></pre>
+
         <script>
-          async function runTask() {
-            const out = document.getElementById('out');
-            out.textContent = 'Running...';
-            const resp = await fetch('/run', {
-              method: 'POST',
-              headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({
-                task: document.getElementById('task').value,
-                approved: document.getElementById('approved').checked
-              })
+          const out = document.getElementById('out');
+          const show = (data) => out.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+
+          async function api(path, options = {}) {
+            const response = await fetch(path, {
+              headers: {'Content-Type': 'application/json'},
+              ...options,
             });
-            const data = await resp.json();
-            out.textContent = JSON.stringify(data, null, 2);
+            const payload = await response.json();
+            if (!response.ok) throw new Error(JSON.stringify(payload));
+            return payload;
+          }
+
+          async function runTask() {
+            try {
+              show('Running task...');
+              const payload = await api('/run', {
+                method: 'POST',
+                body: JSON.stringify({
+                  task: document.getElementById('task').value,
+                  approved: document.getElementById('approved').checked,
+                }),
+              });
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
+          }
+
+          async function createProject() {
+            try {
+              show('Creating project...');
+              const payload = await api('/video/projects', {
+                method: 'POST',
+                body: JSON.stringify({
+                  title: document.getElementById('title').value,
+                  idea: document.getElementById('idea').value,
+                  audience: document.getElementById('audience').value,
+                  target_duration_minutes: Number(document.getElementById('duration').value),
+                  language: document.getElementById('language').value,
+                  visual_style: document.getElementById('visualStyle').value,
+                }),
+              });
+              document.getElementById('projectId').value = payload.id;
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
+          }
+
+          async function listProjects() {
+            try {
+              show('Loading projects...');
+              const payload = await api('/video/projects');
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
+          }
+
+          async function loadProject() {
+            try {
+              const projectId = document.getElementById('projectId').value.trim();
+              if (!projectId) return show('Please provide a project ID.');
+              show('Loading project...');
+              const payload = await api(`/video/projects/${projectId}`);
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
+          }
+
+          async function generatePlan() {
+            try {
+              const projectId = document.getElementById('projectId').value.trim();
+              if (!projectId) return show('Please provide a project ID.');
+              show('Generating plan...');
+              const payload = await api(`/video/projects/${projectId}/plan`, {method: 'POST'});
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
+          }
+
+          async function generatePrompts() {
+            try {
+              const projectId = document.getElementById('projectId').value.trim();
+              if (!projectId) return show('Please provide a project ID.');
+              show('Generating prompts...');
+              const payload = await api(`/video/projects/${projectId}/prompts`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  character_name: document.getElementById('characterName').value,
+                  character_description: document.getElementById('characterDescription').value,
+                  wardrobe: document.getElementById('wardrobe').value,
+                  camera_style: document.getElementById('cameraStyle').value,
+                  lighting_style: document.getElementById('lightingStyle').value,
+                }),
+              });
+              show(payload);
+            } catch (error) {
+              show(error.message);
+            }
           }
         </script>
       </body>
@@ -165,6 +306,11 @@ async def create_video_project(req: VideoProjectCreateRequest):
     )
 
 
+@app.get("/video/projects")
+async def list_video_projects():
+    return {"projects": video_store.list_projects()}
+
+
 @app.get("/video/projects/{project_id}")
 async def get_video_project(project_id: str):
     project = video_store.get_project(project_id)
@@ -198,7 +344,6 @@ async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
         raise HTTPException(status_code=404, detail="Project not found")
 
     scenes = build_scene_plan(project)
-
     consistency_packet = {
         "character_name": req.character_name,
         "character_description": req.character_description,
@@ -207,7 +352,6 @@ async def generate_scene_prompts(project_id: str, req: PromptGenerationRequest):
         "lighting_style": req.lighting_style,
         "visual_style": project["visual_style"],
     }
-
     prompts = [
         ScenePrompt(**prompt)
         for prompt in build_scene_prompts(
