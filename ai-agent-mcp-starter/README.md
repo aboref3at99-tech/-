@@ -81,8 +81,10 @@ curl -X POST http://localhost:8000/run \
 > All `/video/*` endpoints require `x-user-id` header (simple owner isolation).
 
 - `POST /video/projects` create a project workspace.
-- `GET /video/projects` list saved projects (latest first).
+- `GET /video/projects` list saved projects (latest first) with query/limit/offset pagination.
 - `GET /video/projects/{project_id}` fetch saved project metadata (includes latest saved plan/prompts).
+- `GET /video/projects/{project_id}/plans` get plan version history.
+- `GET /video/projects/{project_id}/prompts` get prompt version history.
 - `PATCH /video/projects/{project_id}` update project fields (title, idea, duration, style, etc.).
 - `DELETE /video/projects/{project_id}` delete a project.
 - `POST /video/projects/{project_id}/plan` generate outline + scene plan + production checklist (also saved in project metadata).
@@ -107,7 +109,7 @@ curl -X POST http://localhost:8000/video/projects \
 List projects:
 
 ```bash
-curl -H "x-user-id: mobile-user-1" http://localhost:8000/video/projects
+curl -H "x-user-id: mobile-user-1" "http://localhost:8000/video/projects?query=ai&limit=20&offset=0"
 ```
 
 Generate plan:
@@ -130,6 +132,19 @@ curl -X POST http://localhost:8000/video/projects/<project_id>/prompts \
     "camera_style":"35mm medium shot",
     "lighting_style":"soft key light"
   }'
+```
+
+
+Get plan versions:
+
+```bash
+curl -H "x-user-id: mobile-user-1" http://localhost:8000/video/projects/<project_id>/plans
+```
+
+Get prompt versions:
+
+```bash
+curl -H "x-user-id: mobile-user-1" http://localhost:8000/video/projects/<project_id>/prompts
 ```
 
 Update project:

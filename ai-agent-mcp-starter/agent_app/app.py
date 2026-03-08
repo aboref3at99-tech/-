@@ -420,10 +420,17 @@ async def create_video_project(req: VideoProjectCreateRequest, request: Request)
 
 
 @app.get("/video/projects")
-async def list_video_projects(request: Request):
+async def list_video_projects(
+    request: Request,
+    query: str = "",
+    limit: int = 50,
+    offset: int = 0,
+):
     _check_rate_limit(request, "video")
     user_id = _extract_user_id(request)
-    return {"projects": video_store.list_projects(user_id)}
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    return video_store.list_projects(user_id, query=query, limit=limit, offset=offset)
 
 
 @app.get("/video/projects/{project_id}")
@@ -434,6 +441,26 @@ async def get_video_project(project_id: str, request: Request):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@app.get("/video/projects/{project_id}/plans")
+async def get_project_plan_versions(project_id: str, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    versions = video_store.get_plan_versions(project_id, user_id)
+    if versions is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"project_id": project_id, "plan_versions": versions}
+
+
+@app.get("/video/projects/{project_id}/prompts")
+async def get_project_prompt_versions(project_id: str, request: Request):
+    _check_rate_limit(request, "video")
+    user_id = _extract_user_id(request)
+    versions = video_store.get_prompt_versions(project_id, user_id)
+    if versions is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"project_id": project_id, "prompt_versions": versions}
 
 
 @app.patch("/video/projects/{project_id}")

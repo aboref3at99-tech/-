@@ -99,11 +99,31 @@ class VideoProjectStore:
                 return None
             return project
 
-    def list_projects(self, owner_id: str) -> List[Dict[str, Any]]:
+    def list_projects(
+        self,
+        owner_id: str,
+        *,
+        query: str = "",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        normalized_query = query.strip().lower()
+
         with self._lock:
             projects = [project for project in self._projects.values() if project.get("owner_id") == owner_id]
 
-        return sorted(projects, key=lambda item: item.get("updated_at", item.get("created_at", "")), reverse=True)
+        if normalized_query:
+            projects = [
+                project
+                for project in projects
+                if normalized_query in project.get("title", "").lower()
+                or normalized_query in project.get("idea", "").lower()
+            ]
+
+        ordered = sorted(projects, key=lambda item: item.get("updated_at", item.get("created_at", "")), reverse=True)
+        total = len(ordered)
+        items = ordered[offset : offset + limit]
+        return {"items": items, "total": total, "limit": limit, "offset": offset}
 
     def update_project(self, project_id: str, owner_id: str, updates: Dict[str, Any]) -> Dict[str, Any] | None:
         with self._lock:
@@ -163,6 +183,20 @@ class VideoProjectStore:
             self._projects[project_id] = project
             self._persist()
             return project
+
+    def get_plan_versions(self, project_id: str, owner_id: str) -> List[Dict[str, Any]] | None:
+        with self._lock:
+            project = self._projects.get(project_id)
+            if not project or project.get("owner_id") != owner_id:
+                return None
+            return project.get("plan_versions", [])
+
+    def get_prompt_versions(self, project_id: str, owner_id: str) -> List[Dict[str, Any]] | None:
+        with self._lock:
+            project = self._projects.get(project_id)
+            if not project or project.get("owner_id") != owner_id:
+                return None
+            return project.get("prompt_versions", [])
 
 
 def build_outline(idea: str) -> List[str]:

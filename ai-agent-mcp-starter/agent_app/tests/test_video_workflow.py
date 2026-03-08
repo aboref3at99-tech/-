@@ -65,10 +65,11 @@ class VideoWorkflowTests(unittest.TestCase):
                 visual_style="cinematic",
             )
 
-            listed = store.list_projects("u1")
-            self.assertEqual(len(listed), 2)
-            self.assertEqual(listed[0]["id"], second["id"])
-            self.assertEqual(listed[1]["id"], first["id"])
+            listed = store.list_projects("u1", query="", limit=10, offset=0)
+            self.assertEqual(listed["total"], 2)
+            self.assertEqual(len(listed["items"]), 2)
+            self.assertEqual(listed["items"][0]["id"], second["id"])
+            self.assertEqual(listed["items"][1]["id"], first["id"])
 
     def test_update_delete_and_save_outputs(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -97,6 +98,11 @@ class VideoWorkflowTests(unittest.TestCase):
             self.assertIsNotNone(save_prompts_result)
             self.assertIn("last_prompts", save_prompts_result)
             self.assertEqual(len(save_prompts_result["prompt_versions"]), 1)
+
+            plan_versions = store.get_plan_versions(created["id"], "u1")
+            prompt_versions = store.get_prompt_versions(created["id"], "u1")
+            self.assertEqual(len(plan_versions), 1)
+            self.assertEqual(len(prompt_versions), 1)
 
             deleted = store.delete_project(created["id"], "u1")
             self.assertTrue(deleted)

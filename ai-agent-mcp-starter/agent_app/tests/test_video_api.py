@@ -74,9 +74,10 @@ class VideoApiTests(unittest.TestCase):
         project = create_response.json()
         project_id = project["id"]
 
-        list_response = self.client.get("/video/projects", headers=headers)
+        list_response = self.client.get("/video/projects?limit=20&offset=0", headers=headers)
         self.assertEqual(list_response.status_code, 200)
-        self.assertGreaterEqual(len(list_response.json()["projects"]), 1)
+        self.assertGreaterEqual(len(list_response.json()["items"]), 1)
+        self.assertIn("total", list_response.json())
 
         plan_response = self.client.post(f"/video/projects/{project_id}/plan", headers=headers)
         self.assertEqual(plan_response.status_code, 200)
@@ -103,6 +104,13 @@ class VideoApiTests(unittest.TestCase):
         self.assertIn("last_prompts", project_payload)
         self.assertEqual(len(project_payload["plan_versions"]), 1)
         self.assertEqual(len(project_payload["prompt_versions"]), 1)
+
+        plans_versions_response = self.client.get(f"/video/projects/{project_id}/plans", headers=headers)
+        prompts_versions_response = self.client.get(f"/video/projects/{project_id}/prompts", headers=headers)
+        self.assertEqual(plans_versions_response.status_code, 200)
+        self.assertEqual(prompts_versions_response.status_code, 200)
+        self.assertEqual(len(plans_versions_response.json()["plan_versions"]), 1)
+        self.assertEqual(len(prompts_versions_response.json()["prompt_versions"]), 1)
 
         patch_response = self.client.patch(
             f"/video/projects/{project_id}",
