@@ -1,26 +1,33 @@
-# التقرير المعماري الأولي (بدء البناء الشامل)
+# تقرير التقدم — استكمال البناء
 
-## ما تم إنجازه الآن
-1. إنشاء Monorepo احترافي قابل للتوسع.
-2. فصل التطبيقات إلى:
-   - تطبيق سطح المكتب
-   - API سحابية
-   - لوحة إدارة
-3. إنشاء Packages مشتركة للأنواع والإعدادات.
-4. تجهيز سكربتات تشغيل موحدة للمراحل القادمة.
+## المنجز في هذا التحديث
+1. ترقية الهيكل من JavaScript placeholders إلى TypeScript حقيقي على مستوى كل التطبيقات والحزم.
+2. إضافة `tsconfig.base.json` مركزي لضبط معايير صارمة موحدة في كل النظام.
+3. تأسيس `@restaurant/shared` كطبقة عقود مشتركة (HealthResponse + common types).
+4. تأسيس `@restaurant/config` كطبقة إعدادات مؤسسية مع التحقق من البيئة (NODE_ENV / API_PORT).
+5. إنشاء API bootstrap واقعي يقرأ البيئة، يطبق baseline أمني، ويولد health snapshot.
 
-## لماذا هذه البداية صحيحة
-- تمنع الفوضى عند نمو النظام.
-- تسهل إضافة وحدات POS والمخزون والمحاسبة بشكل مستقل.
-- تضمن قابلية الاختبار والصيانة.
+## التأثير المعماري
+- هذه الخطوة تضع أساسًا عمليًا لربط:
+  - Auth/JWT
+  - RBAC
+  - Audit logs
+  - Sync engine
+  دون إعادة هيكلة جذرية لاحقًا.
 
-## المرحلة التالية مباشرة
-- تركيب Tauri + React + TypeScript في `apps/desktop`.
-- تركيب NestJS + Prisma + PostgreSQL في `apps/api`.
-- تأسيس Auth + RBAC + Audit Log كأساس أمني إلزامي.
+## المرحلة التالية (تنفيذ مباشر)
+1. تركيب NestJS فعلي داخل `apps/api` مع وحدات:
+   - AuthModule
+   - UsersModule
+   - RolesModule
+   - AuditModule
+2. تركيب Prisma + PostgreSQL schema أولي (users, roles, branches, employees, licenses).
+3. تركيب Tauri + React + Tailwind في `apps/desktop` ببنية feature-based.
+4. إضافة واجهة login موحدة تدعم العربية/الإنجليزية + RTL.
 
-## متطلبات الأمان الملزمة في التنفيذ القادم
-- JWT قصير العمر + Refresh rotation.
-- تشفير قاعدة البيانات المحلية (SQLCipher).
-- ربط الترخيص ببصمة الجهاز.
-- سجلات تدقيق غير قابلة للتلاعب.
+## معايير الأمان الملزمة
+- JWT access قصير العمر + refresh rotation + revocation.
+- تشفير local database باستخدام SQLCipher.
+- تفعيل rate limit على API.
+- سجل تدقيق إلزامي لكل عمليات المدير.
+- حماية مفاتيح الترخيص وتوقيع التحديثات.

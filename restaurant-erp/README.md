@@ -1,29 +1,33 @@
-# Restaurant ERP Platform (Enterprise Starter)
+# Restaurant ERP Platform (Enterprise Foundation)
 
-هذا المشروع هو نقطة الانطلاق الاحترافية لبناء نظام إدارة مطاعم مكتبي (Desktop ERP) بأسلوب **Offline-First** مع مزامنة سحابية.
+منصة احترافية لبناء نظام إدارة مطاعم مكتبي **Offline-First** مع مزامنة سحابية آمنة.
 
-## المكدس التقني
-- Desktop: Tauri + React + TypeScript
-- API: NestJS + TypeScript
-- Local DB: SQLite (SQLCipher لاحقًا)
-- Cloud DB: PostgreSQL
-- ORM: Prisma
-- UI: Tailwind CSS
+## المعمارية الحالية
+- `apps/desktop`: تطبيق سطح المكتب (الواجهة التشغيلية للفروع)
+- `apps/api`: خدمة API السحابية (المصادقة، الصلاحيات، المزامنة، التراخيص)
+- `apps/admin-web`: لوحة الإدارة المركزية (SaaS admin)
+- `packages/shared`: العقود والأنواع المشتركة
+- `packages/config`: إعدادات الأمان والبيئة
 
-## التشغيل السريع
+## لماذا هذا التقسيم مهم
+- يمنع تداخل طبقات النظام ويجعل كل جزء قابلًا للتطوير والاختبار بشكل مستقل.
+- يضمن إعادة استخدام العقود المشتركة بين الواجهة والـ API.
+- يسهّل إضافة وحدات POS والمخزون والمحاسبة بدون كسر الهيكل.
+
+## تشغيل المشروع
 ```bash
 pnpm install
 pnpm dev
 ```
 
-## هيكلية المونوريبو
-- `apps/desktop`: تطبيق سطح المكتب
-- `apps/api`: واجهة API السحابية
-- `apps/admin-web`: لوحة إدارة السحابة
-- `packages/shared`: أنواع وواجهات مشتركة
-- `packages/config`: إعدادات البيئة والأمن
-- `docs`: وثائق معمارية وخطة التنفيذ
+## فحوصات الجودة
+```bash
+pnpm typecheck
+pnpm build
+```
 
-## الحالة الحالية
-- تم تجهيز **الهيكل الأساسي للمشروع** (Phase 0 + بداية Phase 1).
-- جاهز للانتقال إلى تنفيذ المصادقة والترخيص والمزامنة.
+## المرحلة الحالية
+- اكتمل Phase 0 (Foundation) + جزء تنفيذي من Phase 1:
+  - تحويل المشروع إلى TypeScript.
+  - إنشاء عقود مشتركة Health + types.
+  - إنشاء loader أساسي لإعدادات البيئة والأمان.
