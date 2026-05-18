@@ -1,0 +1,19 @@
+{
+  "name": "restaurant-erp-monorepo",
+  "private": true,
+  "version": "0.2.1",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "dev:api": "node apps/api/dev-server.mjs",
+    "dev:desktop": "node apps/desktop/dev-launcher.mjs",
+    "dev:admin": "node apps/admin-web/dev-launcher.mjs",
+    "test:run": "node apps/desktop/dev-launcher.mjs && node apps/admin-web/dev-launcher.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
