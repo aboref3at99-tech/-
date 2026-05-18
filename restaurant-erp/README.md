@@ -9,12 +9,20 @@
 - `packages/shared`: العقود والأنواع المشتركة
 - `packages/config`: إعدادات الأمان والبيئة
 
-## لماذا هذا التقسيم مهم
-- يمنع تداخل طبقات النظام ويجعل كل جزء قابلًا للتطوير والاختبار بشكل مستقل.
-- يضمن إعادة استخدام العقود المشتركة بين الواجهة والـ API.
-- يسهّل إضافة وحدات POS والمخزون والمحاسبة بدون كسر الهيكل.
+## تشغيل سريع للاختبار (بدون تثبيت حزم)
+```bash
+# تشغيل API تجريبي
+node apps/api/dev-server.mjs
 
-## تشغيل المشروع
+# في نافذة ثانية: اختبار الصحة
+curl http://localhost:4000/health
+
+# تشغيل launchers تجريبية للـ desktop/admin
+node apps/desktop/dev-launcher.mjs
+node apps/admin-web/dev-launcher.mjs
+```
+
+## تشغيل المشروع الكامل (عند توفر الشبكة)
 ```bash
 pnpm install
 pnpm dev
@@ -25,9 +33,3 @@ pnpm dev
 pnpm typecheck
 pnpm build
 ```
-
-## المرحلة الحالية
-- اكتمل Phase 0 (Foundation) + جزء تنفيذي من Phase 1:
-  - تحويل المشروع إلى TypeScript.
-  - إنشاء عقود مشتركة Health + types.
-  - إنشاء loader أساسي لإعدادات البيئة والأمان.
