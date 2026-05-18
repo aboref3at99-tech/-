@@ -1,0 +1,12 @@
+{
+  "name": "@restaurant/admin-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/main.js",
+    "build": "echo build-admin",
+    "lint": "echo lint-admin",
+    "typecheck": "echo typecheck-admin"
+  }
+}
